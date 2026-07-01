@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#7b2ff7" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <title>¡TABÚ! Juego para peques</title>
+  <style>
+    :root {
+      --morado: #7b2ff7;
+      --rosa: #f72fb5;
+      --naranja: #ff8a00;
+      --amarillo: #ffd000;
+      --verde: #1ec773;
+      --azul: #2f9bff;
+      --rojo: #ff3b5c;
+      --oscuro: #2a1758;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: "Comic Sans MS", "Chalkboard SE", "Segoe UI", system-ui, sans-serif;
+      color: #fff;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    body {
+      background: linear-gradient(135deg, #7b2ff7 0%, #f72fb5 50%, #ff8a00 100%);
+      background-attachment: fixed;
+    }
+
+    #app {
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      padding: max(14px, env(safe-area-inset-top)) 16px max(14px, env(safe-area-inset-bottom)) 16px;
+      overflow-y: auto;
+    }
+
+    .screen { display: none; flex: 1; flex-direction: column; }
+    .screen.active { display: flex; animation: pop .25s ease; }
+
+    @keyframes pop {
+      from { transform: scale(.96); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    /* ---------- Títulos ---------- */
+    .logo {
+      text-align: center;
+      margin: 10px 0 4px;
+    }
+    .logo h1 {
+      font-size: clamp(48px, 16vw, 96px);
+      margin: 0;
+      letter-spacing: 2px;
+      text-shadow: 4px 4px 0 var(--oscuro), -2px -2px 0 #fff3;
+      transform: rotate(-3deg);
+      color: #fff;
+    }
+    .logo .sub {
+      font-size: clamp(15px, 4.5vw, 22px);
+      background: var(--oscuro);
+      display: inline-block;
+      padding: 5px 16px;
+      border-radius: 999px;
+      transform: rotate(1deg);
+      margin-top: 6px;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.16);
+      border: 3px solid rgba(255,255,255,0.5);
+      border-radius: 26px;
+      padding: 18px;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+    }
+
+    h2 { text-align: center; font-size: clamp(22px, 6vw, 32px); margin: 6px 0 14px; }
+    label { font-size: 17px; font-weight: bold; }
+
+    /* ---------- Botones ---------- */
+    .btn {
+      border: none;
+      border-radius: 22px;
+      padding: 18px;
+      font-size: clamp(20px, 6vw, 26px);
+      font-weight: bold;
+      font-family: inherit;
+      color: #fff;
+      cursor: pointer;
+      width: 100%;
+      box-shadow: 0 6px 0 rgba(0,0,0,0.25);
+      transition: transform .08s, box-shadow .08s;
+      text-shadow: 1px 1px 0 rgba(0,0,0,0.25);
+    }
+    .btn:active { transform: translateY(5px); box-shadow: 0 1px 0 rgba(0,0,0,0.25); }
+    .btn.grande { padding: 22px; font-size: clamp(24px, 7vw, 34px); }
+    .btn-verde   { background: var(--verde); }
+    .btn-rojo    { background: var(--rojo); }
+    .btn-azul    { background: var(--azul); }
+    .btn-naranja { background: var(--naranja); }
+    .btn-morado  { background: var(--morado); }
+    .btn-amarillo{ background: var(--amarillo); color: var(--oscuro); text-shadow:none; }
+    .btn:disabled { opacity: .4; }
+
+    /* ---------- Jugadores (setup) ---------- */
+    .selector { display: flex; gap: 10px; justify-content: center; margin: 8px 0 16px; }
+    .selector button {
+      flex: 1; padding: 16px 0; font-size: 28px; font-weight: bold;
+      border-radius: 18px; border: 3px solid #fff6; background: rgba(255,255,255,0.18);
+      color: #fff; cursor: pointer;
+    }
+    .selector button.sel { background: var(--amarillo); color: var(--oscuro); border-color: #fff; transform: scale(1.08); }
+
+    .nombre-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+    .nombre-row .emoji { font-size: 30px; }
+    .nombre-row input {
+      flex: 1; padding: 12px 14px; border-radius: 14px; border: 3px solid #fff8;
+      font-size: 18px; font-family: inherit; background: #fff; color: var(--oscuro); font-weight: bold;
+    }
+    .nombre-row input:focus { outline: 3px solid var(--amarillo); }
+
+    .config-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:10px 0; }
+    .pill-group { display:flex; gap:8px; }
+    .pill {
+      padding:10px 16px; border-radius:999px; border:3px solid #fff6;
+      background:rgba(255,255,255,.18); color:#fff; font-weight:bold; font-size:17px; cursor:pointer;
+    }
+    .pill.sel { background:var(--amarillo); color:var(--oscuro); border-color:#fff; }
+
+    /* ---------- Pantalla turno ---------- */
+    .turno-jugador { text-align:center; }
+    .turno-jugador .emoji-grande { font-size: clamp(70px, 22vw, 120px); }
+    .turno-jugador .nombre { font-size: clamp(30px, 9vw, 48px); font-weight:bold; text-shadow: 3px 3px 0 var(--oscuro); }
+
+    /* ---------- Juego ---------- */
+    #pantalla-juego { gap: 10px; }
+    .top-bar { display:flex; align-items:center; justify-content:space-between; }
+    .timer {
+      font-size: clamp(40px, 13vw, 70px); font-weight: bold;
+      text-shadow: 3px 3px 0 var(--oscuro);
+      min-width: 110px; text-align:center;
+    }
+    .timer.alerta { color: var(--amarillo); animation: latido .5s infinite; }
+    @keyframes latido { 0%,100%{transform:scale(1);} 50%{transform:scale(1.18);} }
+    .mini { font-size: 15px; opacity:.95; text-align:center; }
+    .puntos-turno { font-size: clamp(22px, 7vw, 30px); font-weight:bold; background:var(--oscuro); padding:6px 16px; border-radius:999px; }
+
+    .palabra-card {
+      flex: 1;
+      display:flex; flex-direction:column; justify-content:center; align-items:center;
+      background:#fff; color:var(--oscuro); border-radius:26px; padding:16px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+      min-height: 0;
+    }
+    .palabra-principal {
+      font-size: clamp(34px, 11vw, 64px); font-weight:bold; text-align:center;
+      color: var(--morado); margin-bottom: 10px; line-height:1.05;
+    }
+    .tabu-titulo { font-size:15px; color:var(--rojo); font-weight:bold; letter-spacing:1px; margin-bottom:8px; }
+    .tabu-lista { display:flex; flex-direction:column; gap:6px; width:100%; max-width:360px; }
+    .tabu-item {
+      background: #ffe3ea; color:#b3002d; border:2px solid #ffb3c4;
+      border-radius:12px; padding:8px; text-align:center; font-size: clamp(17px,5vw,22px); font-weight:bold;
+    }
+
+    .botones-juego { display:flex; flex-direction:column; gap:10px; }
+    .fila2 { display:flex; gap:10px; }
+    .fila2 .btn { flex:1; }
+
+    /* ---------- Marcador ---------- */
+    .marcador { list-style:none; padding:0; margin:10px 0; }
+    .marcador li {
+      display:flex; align-items:center; gap:12px; background:rgba(255,255,255,.16);
+      border:3px solid #fff5; border-radius:18px; padding:12px 16px; margin-bottom:10px;
+      font-size: clamp(18px,5vw,24px); font-weight:bold;
+    }
+    .marcador li .pts { margin-left:auto; background:var(--oscuro); padding:4px 16px; border-radius:999px; min-width:60px; text-align:center; }
+    .marcador li.lider { background: var(--amarillo); color: var(--oscuro); border-color:#fff; }
+    .marcador li.lider .pts { background: var(--rojo); color:#fff; }
+
+    .resumen-turno { text-align:center; }
+    .resumen-turno .big { font-size: clamp(28px,9vw,42px); font-weight:bold; text-shadow:2px 2px 0 var(--oscuro); }
+    .chips { display:flex; gap:10px; justify-content:center; margin:14px 0; flex-wrap:wrap; }
+    .chip { background:rgba(0,0,0,.2); border-radius:16px; padding:10px 14px; font-size:17px; font-weight:bold; }
+
+    .ganador-emoji { font-size: clamp(70px,22vw,130px); text-align:center; }
+
+    .footer-note { text-align:center; font-size:13px; opacity:.85; margin-top:8px; }
+    .spacer { flex:1; }
+
+    /* confeti */
+    #confeti { position:fixed; inset:0; pointer-events:none; z-index:50; }
+  </style>
+</head>
+<body>
+  <canvas id="confeti"></canvas>
+  <div id="app">
+
+    <!-- ========== PANTALLA INICIO / CONFIGURACIÓN ========== -->
+    <section id="pantalla-inicio" class="screen active">
+      <div class="logo">
+        <h1>TABÚ</h1>
+        <div class="sub">🎉 ¡A explicar palabras! 🎉</div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <label>👫 ¿Cuántos jugáis?</label>
+        <div class="selector" id="selector-jugadores">
+          <button data-n="2">2</button>
+          <button data-n="3">3</button>
+          <button data-n="4">4</button>
+        </div>
+
+        <label>✏️ Escribid vuestros nombres:</label>
+        <div id="contenedor-nombres"></div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <div class="config-row">
+          <label>⏱️ Tiempo por turno</label>
+          <div class="pill-group" id="sel-tiempo">
+            <button class="pill" data-t="30">30s</button>
+            <button class="pill" data-t="60">1 min</button>
+            <button class="pill" data-t="90">90s</button>
+          </div>
+        </div>
+        <div class="config-row">
+          <label>🔁 Rondas</label>
+          <div class="pill-group" id="sel-rondas">
+            <button class="pill" data-r="2">2</button>
+            <button class="pill" data-r="3">3</button>
+            <button class="pill" data-r="5">5</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="spacer"></div>
+      <button class="btn btn-amarillo grande" id="btn-empezar" style="margin-top:14px;">▶️ ¡EMPEZAR!</button>
+      <button class="btn btn-morado" id="btn-reglas" style="margin-top:10px;">📖 ¿Cómo se juega?</button>
+    </section>
+
+    <!-- ========== PANTALLA REGLAS ========== -->
+    <section id="pantalla-reglas" class="screen">
+      <h2>📖 ¿Cómo se juega?</h2>
+      <div class="card" style="font-size:17px; line-height:1.5;">
+        <p>🗣️ En tu turno tienes que <b>explicar la palabra grande</b> para que los demás la adivinen.</p>
+        <p>🚫 ¡PERO no puedes decir ninguna de las <b>5 palabras tabú</b> de abajo!</p>
+        <p>✅ <b>ACIERTO</b> = +1 punto cuando lo adivinan.</p>
+        <p>❌ <b>TABÚ</b> = -1 punto si dices una palabra prohibida.</p>
+        <p>⏭️ <b>SALTAR</b> = pasas a otra palabra (0 puntos).</p>
+        <p>⏱️ Cuando suene el tiempo, ¡le pasas el móvil al siguiente jugador!</p>
+        <p>🏆 Gana quien tenga más puntos al final.</p>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn btn-verde grande" id="btn-cerrar-reglas">¡Entendido! 👍</button>
+    </section>
+
+    <!-- ========== PANTALLA "TURNO DE..." ========== -->
+    <section id="pantalla-turno" class="screen">
+      <div class="spacer"></div>
+      <div class="turno-jugador">
+        <div class="emoji-grande" id="turno-emoji">🙂</div>
+        <div class="mini">Le toca a</div>
+        <div class="nombre" id="turno-nombre">Jugador</div>
+        <div class="mini" id="turno-ronda" style="margin-top:10px;">Ronda 1</div>
+      </div>
+      <div class="spacer"></div>
+      <p style="text-align:center;font-size:18px;">📱 Coge el móvil y prepárate...</p>
+      <button class="btn btn-verde grande" id="btn-listo">¡LISTO! 🚀</button>
+    </section>
+
+    <!-- ========== PANTALLA JUEGO ========== -->
+    <section id="pantalla-juego" class="screen">
+      <div class="top-bar">
+        <div class="puntos-turno">⭐ <span id="puntos-turno">0</span></div>
+        <div class="timer" id="timer">60</div>
+        <div class="puntos-turno" style="background:var(--verde)">✅ <span id="aciertos-turno">0</span></div>
+      </div>
+      <div class="mini" id="info-jugador">Turno de Jugador</div>
+
+      <div class="palabra-card">
+        <div class="palabra-principal" id="palabra">PALABRA</div>
+        <div class="tabu-titulo">🚫 PROHIBIDO DECIR 🚫</div>
+        <div class="tabu-lista" id="tabu-lista"></div>
+      </div>
+
+      <div class="botones-juego">
+        <button class="btn btn-verde grande" id="btn-acierto">✅ ¡ACIERTO! +1</button>
+        <div class="fila2">
+          <button class="btn btn-rojo" id="btn-tabu">❌ TABÚ -1</button>
+          <button class="btn btn-azul" id="btn-saltar">⏭️ SALTAR</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== PANTALLA RESUMEN DE TURNO ========== -->
+    <section id="pantalla-resumen" class="screen">
+      <div class="spacer"></div>
+      <div class="resumen-turno">
+        <div style="font-size:60px;">⏰</div>
+        <div class="big" id="resumen-titulo">¡Tiempo!</div>
+        <div class="chips">
+          <div class="chip">✅ Aciertos: <span id="res-aciertos">0</span></div>
+          <div class="chip">❌ Tabús: <span id="res-tabus">0</span></div>
+          <div class="chip">⭐ Turno: <span id="res-puntos">0</span></div>
+        </div>
+      </div>
+      <h2 style="margin-bottom:4px;">🏅 Marcador</h2>
+      <ul class="marcador" id="marcador-parcial"></ul>
+      <div class="spacer"></div>
+      <button class="btn btn-amarillo grande" id="btn-siguiente">➡️ Siguiente jugador</button>
+    </section>
+
+    <!-- ========== PANTALLA FINAL ========== -->
+    <section id="pantalla-final" class="screen">
+      <div class="logo"><h1 style="font-size:clamp(36px,12vw,72px)">¡FIN!</h1></div>
+      <div class="ganador-emoji">🏆</div>
+      <h2 id="texto-ganador" style="margin-top:0;">¡Gana ...!</h2>
+      <ul class="marcador" id="marcador-final"></ul>
+      <div class="spacer"></div>
+      <button class="btn btn-verde grande" id="btn-revancha">🔁 ¡Revancha!</button>
+      <button class="btn btn-morado" id="btn-inicio" style="margin-top:10px;">🏠 Volver al inicio</button>
+    </section>
+
+  </div>
+
+  <script src="words.js"></script>
+  <script>
+  (function () {
+    "use strict";
+
+    // ---------------- Estado del juego ----------------
+    const EMOJIS = ["🦄", "🐯", "🐸", "🦊", "🐲", "🐙", "🦁", "🐵"];
+    const COLORES_NOMBRE = ["#1ec773", "#2f9bff", "#ff8a00", "#f72fb5"];
+
+    const estado = {
+      numJugadores: 2,
+      jugadores: [],         // {nombre, emoji, puntos}
+      tiempoTurno: 60,
+      totalRondas: 3,
+      rondaActual: 1,
+      turnoActual: 0,        // índice del jugador
+      mazo: [],              // índices barajados de PALABRAS
+      posMazo: 0,
+      // datos del turno en curso
+      aciertosTurno: 0,
+      tabusTurno: 0,
+      puntosTurno: 0,
+      tiempoRestante: 60,
+      intervalo: null,
+    };
+
+    // ---------------- Utilidades ----------------
+    const $ = (id) => document.getElementById(id);
+
+    function mostrarPantalla(id) {
+      document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
+      $(id).classList.add("active");
+    }
+
+    function barajar(array) {
+      const a = array.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        // pseudoaleatorio basado en tiempo, suficiente para un juego
+        const j = Math.floor((Math.sin(Date.now() * (i + 1) * 0.0001 + i) * 0.5 + 0.5) * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      // segunda pasada con random nativo para más mezcla
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    // ---------------- Sonidos ----------------
+    let audioCtx = null;
+    function beep(freq, dur, vol) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "square";
+        osc.frequency.value = freq;
+        gain.gain.value = vol || 0.15;
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + dur);
+      } catch (e) { /* sin sonido */ }
+    }
+    const sonidoAcierto = () => { beep(660, 0.1, 0.2); setTimeout(() => beep(880, 0.15, 0.2), 90); };
+    const sonidoTabu    = () => beep(140, 0.35, 0.22);
+    const sonidoSaltar  = () => beep(330, 0.08, 0.12);
+    const sonidoTic     = () => beep(900, 0.05, 0.1);
+    const sonidoFin     = () => { beep(523,0.15,0.2); setTimeout(()=>beep(392,0.15,0.2),150); setTimeout(()=>beep(330,0.3,0.2),300); };
+
+    function vibrar(ms) { if (navigator.vibrate) navigator.vibrate(ms); }
+
+    // ---------------- Configuración (pantalla inicio) ----------------
+    function pintarNombres() {
+      const cont = $("contenedor-nombres");
+      cont.innerHTML = "";
+      for (let i = 0; i < estado.numJugadores; i++) {
+        const prev = estado.jugadores[i] ? estado.jugadores[i].nombre : "";
+        const row = document.createElement("div");
+        row.className = "nombre-row";
+        row.innerHTML =
+          '<span class="emoji">' + EMOJIS[i] + '</span>' +
+          '<input type="text" maxlength="12" placeholder="Jugador ' + (i + 1) + '" value="' + prev + '" data-i="' + i + '">';
+        cont.appendChild(row);
+      }
+    }
+
+    function seleccionarJugadores(n) {
+      estado.numJugadores = n;
+      document.querySelectorAll("#selector-jugadores button").forEach((b) => {
+        b.classList.toggle("sel", Number(b.dataset.n) === n);
+      });
+      pintarNombres();
+    }
+
+    function seleccionarPill(grupo, valor, attr, clave) {
+      estado[clave] = valor;
+      document.querySelectorAll("#" + grupo + " .pill").forEach((b) => {
+        b.classList.toggle("sel", Number(b.dataset[attr]) === valor);
+      });
+    }
+
+    // ---------------- Comienzo de partida ----------------
+    function empezarPartida() {
+      // recoger nombres
+      const inputs = document.querySelectorAll("#contenedor-nombres input");
+      estado.jugadores = [];
+      inputs.forEach((inp, i) => {
+        const nombre = inp.value.trim() || ("Jugador " + (i + 1));
+        estado.jugadores.push({ nombre: nombre, emoji: EMOJIS[i], puntos: 0 });
+      });
+
+      estado.mazo = barajar(PALABRAS.map((_, i) => i));
+      estado.posMazo = 0;
+      estado.rondaActual = 1;
+      estado.turnoActual = 0;
+
+      irAPantallaTurno();
+    }
+
+    // ---------------- Pantalla "turno de..." ----------------
+    function irAPantallaTurno() {
+      const j = estado.jugadores[estado.turnoActual];
+      $("turno-emoji").textContent = j.emoji;
+      $("turno-nombre").textContent = j.nombre;
+      $("turno-nombre").style.color = COLORES_NOMBRE[estado.turnoActual % COLORES_NOMBRE.length];
+      $("turno-ronda").textContent = "Ronda " + estado.rondaActual + " de " + estado.totalRondas;
+      mostrarPantalla("pantalla-turno");
+    }
+
+    // ---------------- Lógica del turno ----------------
+    function iniciarTurno() {
+      estado.aciertosTurno = 0;
+      estado.tabusTurno = 0;
+      estado.puntosTurno = 0;
+      estado.tiempoRestante = estado.tiempoTurno;
+
+      const j = estado.jugadores[estado.turnoActual];
+      $("info-jugador").textContent = "Turno de " + j.emoji + " " + j.nombre;
+      $("puntos-turno").textContent = "0";
+      $("aciertos-turno").textContent = "0";
+      actualizarTimer();
+      siguientePalabra();
+      mostrarPantalla("pantalla-juego");
+
+      // desbloquear audio en móviles
+      beep(1, 0.01, 0);
+
+      estado.intervalo = setInterval(tick, 1000);
+    }
+
+    function tick() {
+      estado.tiempoRestante--;
+      actualizarTimer();
+      if (estado.tiempoRestante <= 5 && estado.tiempoRestante > 0) sonidoTic();
+      if (estado.tiempoRestante <= 0) finalizarTurno();
+    }
+
+    function actualizarTimer() {
+      const t = $("timer");
+      t.textContent = estado.tiempoRestante;
+      t.classList.toggle("alerta", estado.tiempoRestante <= 10);
+    }
+
+    function siguientePalabra() {
+      if (estado.posMazo >= estado.mazo.length) {
+        estado.mazo = barajar(PALABRAS.map((_, i) => i));
+        estado.posMazo = 0;
+      }
+      const idx = estado.mazo[estado.posMazo++];
+      const item = PALABRAS[idx];
+      $("palabra").textContent = item.p;
+      const lista = $("tabu-lista");
+      lista.innerHTML = "";
+      item.t.forEach((tabu) => {
+        const div = document.createElement("div");
+        div.className = "tabu-item";
+        div.textContent = tabu;
+        lista.appendChild(div);
+      });
+    }
+
+    function refrescarPuntosTurno() {
+      $("puntos-turno").textContent = estado.puntosTurno;
+      $("aciertos-turno").textContent = estado.aciertosTurno;
+    }
+
+    function onAcierto() {
+      estado.aciertosTurno++;
+      estado.puntosTurno++;
+      refrescarPuntosTurno();
+      sonidoAcierto();
+      vibrar(50);
+      lanzarConfeti();
+      siguientePalabra();
+    }
+    function onTabu() {
+      estado.tabusTurno++;
+      estado.puntosTurno--;
+      refrescarPuntosTurno();
+      sonidoTabu();
+      vibrar([60, 40, 60]);
+      flashPantalla("rgba(255,59,92,0.5)");
+      siguientePalabra();
+    }
+    function onSaltar() {
+      sonidoSaltar();
+      siguientePalabra();
+    }
+
+    function finalizarTurno() {
+      clearInterval(estado.intervalo);
+      estado.intervalo = null;
+      sonidoFin();
+      vibrar([120, 60, 120]);
+
+      // sumar puntos al jugador
+      const j = estado.jugadores[estado.turnoActual];
+      j.puntos += estado.puntosTurno;
+
+      // resumen
+      $("res-aciertos").textContent = estado.aciertosTurno;
+      $("res-tabus").textContent = estado.tabusTurno;
+      $("res-puntos").textContent = (estado.puntosTurno >= 0 ? "+" : "") + estado.puntosTurno;
+      $("resumen-titulo").textContent = "¡Tiempo, " + j.nombre + "!";
+      pintarMarcador("marcador-parcial");
+
+      // ¿es el último turno de la partida?
+      const esUltimoJugador = estado.turnoActual === estado.jugadores.length - 1;
+      const esUltimaRonda = estado.rondaActual >= estado.totalRondas;
+      $("btn-siguiente").textContent = (esUltimoJugador && esUltimaRonda)
+        ? "🏆 Ver ganador"
+        : "➡️ Siguiente jugador";
+
+      mostrarPantalla("pantalla-resumen");
+    }
+
+    function siguienteTurno() {
+      const esUltimoJugador = estado.turnoActual === estado.jugadores.length - 1;
+      if (esUltimoJugador) {
+        if (estado.rondaActual >= estado.totalRondas) {
+          mostrarFinal();
+          return;
+        }
+        estado.rondaActual++;
+        estado.turnoActual = 0;
+      } else {
+        estado.turnoActual++;
+      }
+      irAPantallaTurno();
+    }
+
+    // ---------------- Marcador ----------------
+    function pintarMarcador(id) {
+      const ul = $(id);
+      ul.innerHTML = "";
+      const orden = estado.jugadores
+        .map((j, i) => ({ j: j, i: i }))
+        .sort((a, b) => b.j.puntos - a.j.puntos);
+      const maxPts = orden.length ? orden[0].j.puntos : 0;
+      orden.forEach((o) => {
+        const li = document.createElement("li");
+        if (o.j.puntos === maxPts && maxPts !== 0) li.classList.add("lider");
+        li.innerHTML =
+          '<span style="font-size:28px">' + o.j.emoji + '</span>' +
+          '<span>' + escapar(o.j.nombre) + '</span>' +
+          '<span class="pts">' + o.j.puntos + '</span>';
+        ul.appendChild(li);
+      });
+    }
+
+    function escapar(s) {
+      const d = document.createElement("div");
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    // ---------------- Final ----------------
+    function mostrarFinal() {
+      pintarMarcador("marcador-final");
+      const orden = estado.jugadores.slice().sort((a, b) => b.puntos - a.puntos);
+      const max = orden[0].puntos;
+      const ganadores = orden.filter((j) => j.puntos === max);
+      let texto;
+      if (ganadores.length === 1) {
+        texto = "🎉 ¡Gana " + ganadores[0].emoji + " " + ganadores[0].nombre + "! 🎉";
+      } else {
+        texto = "🤝 ¡Empate entre " + ganadores.map((g) => g.nombre).join(" y ") + "!";
+      }
+      $("texto-ganador").textContent = texto;
+      mostrarPantalla("pantalla-final");
+      sonidoFin();
+      fiestaConfeti();
+    }
+
+    function reiniciarPuntos() {
+      estado.jugadores.forEach((j) => (j.puntos = 0));
+      estado.mazo = barajar(PALABRAS.map((_, i) => i));
+      estado.posMazo = 0;
+      estado.rondaActual = 1;
+      estado.turnoActual = 0;
+      irAPantallaTurno();
+    }
+
+    // ---------------- Efectos visuales (confeti) ----------------
+    const canvas = $("confeti");
+    const ctx = canvas.getContext("2d");
+    let particulas = [];
+    function ajustarCanvas() { canvas.width = innerWidth; canvas.height = innerHeight; }
+    ajustarCanvas();
+    addEventListener("resize", ajustarCanvas);
+
+    const COLORES_CONFETI = ["#ffd000", "#1ec773", "#2f9bff", "#f72fb5", "#ff8a00", "#ffffff"];
+    function lanzarConfeti() { crearParticulas(30); }
+    function fiestaConfeti() { crearParticulas(160); }
+    function crearParticulas(n) {
+      for (let i = 0; i < n; i++) {
+        particulas.push({
+          x: Math.random() * canvas.width,
+          y: -20 - Math.random() * 80,
+          vx: (Math.random() - 0.5) * 4,
+          vy: 2 + Math.random() * 4,
+          s: 6 + Math.random() * 8,
+          c: COLORES_CONFETI[Math.floor(Math.random() * COLORES_CONFETI.length)],
+          rot: Math.random() * 6,
+          vr: (Math.random() - 0.5) * 0.4,
+        });
+      }
+      if (!animando) { animando = true; requestAnimationFrame(animarConfeti); }
+    }
+    let animando = false;
+    function animarConfeti() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particulas.forEach((p) => {
+        p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.rot += p.vr;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+        ctx.fillStyle = p.c;
+        ctx.fillRect(-p.s / 2, -p.s / 2, p.s, p.s * 0.6);
+        ctx.restore();
+      });
+      particulas = particulas.filter((p) => p.y < canvas.height + 30);
+      if (particulas.length > 0) {
+        requestAnimationFrame(animarConfeti);
+      } else {
+        animando = false;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+
+    function flashPantalla(color) {
+      const f = document.createElement("div");
+      f.style.cssText = "position:fixed;inset:0;z-index:40;pointer-events:none;background:" + color + ";transition:opacity .4s;opacity:1;";
+      document.body.appendChild(f);
+      requestAnimationFrame(() => { f.style.opacity = "0"; });
+      setTimeout(() => f.remove(), 420);
+    }
+
+    // ---------------- Eventos ----------------
+    document.querySelectorAll("#selector-jugadores button").forEach((b) => {
+      b.addEventListener("click", () => seleccionarJugadores(Number(b.dataset.n)));
+    });
+    document.querySelectorAll("#sel-tiempo .pill").forEach((b) => {
+      b.addEventListener("click", () => seleccionarPill("sel-tiempo", Number(b.dataset.t), "t", "tiempoTurno"));
+    });
+    document.querySelectorAll("#sel-rondas .pill").forEach((b) => {
+      b.addEventListener("click", () => seleccionarPill("sel-rondas", Number(b.dataset.r), "r", "totalRondas"));
+    });
+
+    $("btn-empezar").addEventListener("click", empezarPartida);
+    $("btn-reglas").addEventListener("click", () => mostrarPantalla("pantalla-reglas"));
+    $("btn-cerrar-reglas").addEventListener("click", () => mostrarPantalla("pantalla-inicio"));
+    $("btn-listo").addEventListener("click", iniciarTurno);
+
+    $("btn-acierto").addEventListener("click", onAcierto);
+    $("btn-tabu").addEventListener("click", onTabu);
+    $("btn-saltar").addEventListener("click", onSaltar);
+
+    $("btn-siguiente").addEventListener("click", siguienteTurno);
+    $("btn-revancha").addEventListener("click", reiniciarPuntos);
+    $("btn-inicio").addEventListener("click", () => mostrarPantalla("pantalla-inicio"));
+
+    // evitar salir del juego sin querer no es posible en web, pero
+    // evitamos el scroll de rebote en el juego
+    document.addEventListener("touchmove", (e) => {
+      if ($("pantalla-juego").classList.contains("active")) e.preventDefault();
+    }, { passive: false });
+
+    // ---------------- Inicialización ----------------
+    seleccionarJugadores(2);
+    seleccionarPill("sel-tiempo", 60, "t", "tiempoTurno");
+    seleccionarPill("sel-rondas", 3, "r", "totalRondas");
+
+    // registrar service worker (para poder instalar / jugar sin conexión)
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js").catch(() => {});
+    }
+  })();
+  </script>
+</body>
+</html>
