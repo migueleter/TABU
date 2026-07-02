@@ -127,12 +127,12 @@
     .nombre-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
     .nombre-row .emoji { font-size: 30px; }
     .nombre-row input {
-      flex: 1; padding: 12px 14px; border-radius: 14px; border: 3px solid #fff8;
+      flex: 1; min-width: 0; width: 100%; padding: 12px 14px; border-radius: 14px; border: 3px solid #fff8;
       font-size: 18px; font-family: inherit; background: #fff; color: var(--oscuro); font-weight: bold;
     }
     .nombre-row input:focus { outline: 3px solid var(--amarillo); }
     .emoji-pick {
-      display: flex; align-items: center; gap: 2px;
+      display: flex; align-items: center; gap: 2px; flex-shrink: 0;
       font-size: 30px; line-height: 1; padding: 6px 8px; cursor: pointer;
       background: rgba(255,255,255,0.22); border: 3px solid #fff8; border-radius: 14px; color: #fff;
     }
