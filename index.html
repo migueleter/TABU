@@ -131,6 +131,24 @@
       font-size: 18px; font-family: inherit; background: #fff; color: var(--oscuro); font-weight: bold;
     }
     .nombre-row input:focus { outline: 3px solid var(--amarillo); }
+    .emoji-pick {
+      display: flex; align-items: center; gap: 2px;
+      font-size: 30px; line-height: 1; padding: 6px 8px; cursor: pointer;
+      background: rgba(255,255,255,0.22); border: 3px solid #fff8; border-radius: 14px; color: #fff;
+    }
+    .emoji-pick:active { transform: scale(0.94); }
+    .emoji-pick .caret { font-size: 14px; opacity: 0.9; }
+
+    .emoji-modal { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,0.55);
+      display: flex; align-items: center; justify-content: center; padding: 20px; animation: pop .2s ease; }
+    .emoji-modal[hidden] { display: none; }
+    .emoji-modal-card { background: linear-gradient(135deg, #7b2ff7, #f72fb5); border: 3px solid #fff;
+      border-radius: 24px; padding: 18px; width: 100%; max-width: 380px; box-shadow: 0 10px 40px rgba(0,0,0,0.45); }
+    .emoji-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 14px 0; }
+    .emoji-grid button { font-size: 32px; background: rgba(255,255,255,0.18); border: 3px solid #fff5;
+      border-radius: 16px; padding: 10px 0; cursor: pointer; }
+    .emoji-grid button.sel { background: var(--amarillo); border-color: #fff; transform: scale(1.08); }
+    .emoji-grid button.taken { opacity: 0.4; }
 
     .config-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin:10px 0; }
     .pill-group { display:flex; gap:8px; }
@@ -337,6 +355,15 @@
       <button class="btn btn-morado" id="btn-inicio" style="margin-top:10px;">🏠 Volver al inicio</button>
     </section>
 
+    <!-- ========== VENTANA ELEGIR EMOJI ========== -->
+    <div id="emoji-modal" class="emoji-modal" hidden>
+      <div class="emoji-modal-card">
+        <h2 style="margin-top:4px;">🐾 Elige tu animal</h2>
+        <div class="emoji-grid" id="emoji-grid"></div>
+        <button class="btn btn-rojo" id="emoji-cerrar">Cerrar</button>
+      </div>
+    </div>
+
   </div>
 
   <script src="words.js"></script>
@@ -345,13 +372,15 @@
     "use strict";
 
     // ---------------- Estado del juego ----------------
-    // Animalitos monos para los jugadores (¡nada de unicornios!)
-    const EMOJIS = ["🐱", "🐶", "🐰", "🐥", "🐷", "🐻", "🐹", "🐸"];
+    // Animalitos monos para elegir (¡nada de unicornios!)
+    const EMOJIS = ["🐱", "🐶", "🐰", "🐥", "🐷", "🐻", "🐹", "🐸", "🐨", "🐼", "🐯", "🦊", "🐮", "🐔", "🐧", "🐢", "🐟", "🐙", "🐝", "🦁"];
     const COLORES_NOMBRE = ["#1ec773", "#2f9bff", "#ff8a00", "#f72fb5", "#b14bff", "#00c2c7"];
 
     const estado = {
       numJugadores: 2,
       jugadores: [],         // {nombre, emoji, puntos}
+      emojisSel: [],         // emoji elegido por cada jugador (por posición)
+      _nombres: [],          // nombres escritos (para no perderlos al cambiar nº)
       tiempoTurno: 60,
       totalRondas: 3,
       rondaActual: 1,
@@ -414,27 +443,69 @@
     function vibrar(ms) { if (navigator.vibrate) navigator.vibrate(ms); }
 
     // ---------------- Configuración (pantalla inicio) ----------------
+    function snapshotNombres() {
+      document.querySelectorAll("#contenedor-nombres input").forEach((inp) => {
+        estado._nombres[Number(inp.dataset.i)] = inp.value;
+      });
+    }
+
     function pintarNombres() {
       const cont = $("contenedor-nombres");
       cont.innerHTML = "";
       for (let i = 0; i < estado.numJugadores; i++) {
-        const prev = estado.jugadores[i] ? estado.jugadores[i].nombre : "";
+        if (!estado.emojisSel[i]) estado.emojisSel[i] = EMOJIS[i % EMOJIS.length];
+        const prev = estado._nombres[i] || "";
         const row = document.createElement("div");
         row.className = "nombre-row";
         row.innerHTML =
-          '<span class="emoji">' + EMOJIS[i] + '</span>' +
-          '<input type="text" maxlength="12" placeholder="Jugador ' + (i + 1) + '" value="' + prev + '" data-i="' + i + '">';
+          '<button type="button" class="emoji-pick" data-i="' + i + '" title="Toca para elegir tu animal">' +
+            '<span class="animal">' + estado.emojisSel[i] + '</span><span class="caret">▾</span>' +
+          '</button>' +
+          '<input type="text" maxlength="12" placeholder="Jugador ' + (i + 1) + '" value="' + escapar(prev) + '" data-i="' + i + '">';
         cont.appendChild(row);
       }
     }
 
     function seleccionarJugadores(n) {
+      snapshotNombres();
       estado.numJugadores = n;
       document.querySelectorAll("#selector-jugadores button").forEach((b) => {
         b.classList.toggle("sel", Number(b.dataset.n) === n);
       });
       pintarNombres();
     }
+
+    // ----- Selector de emoji por jugador -----
+    let emojiEditandoIdx = null;
+    function abrirPicker(i) {
+      emojiEditandoIdx = i;
+      const grid = $("emoji-grid");
+      grid.innerHTML = "";
+      const tomados = estado.emojisSel.slice(0, estado.numJugadores);
+      EMOJIS.forEach((em) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.textContent = em;
+        if (estado.emojisSel[i] === em) b.classList.add("sel");
+        else if (tomados.indexOf(em) !== -1) b.classList.add("taken");
+        b.addEventListener("click", () => elegirEmoji(em));
+        grid.appendChild(b);
+      });
+      $("emoji-modal").hidden = false;
+    }
+    function elegirEmoji(em) {
+      const i = emojiEditandoIdx;
+      // si otro jugador ya lo tiene, se lo intercambiamos para que no se repita
+      const otro = estado.emojisSel.indexOf(em);
+      if (otro !== -1 && otro < estado.numJugadores && otro !== i) {
+        estado.emojisSel[otro] = estado.emojisSel[i];
+      }
+      estado.emojisSel[i] = em;
+      cerrarPicker();
+      snapshotNombres();
+      pintarNombres();
+    }
+    function cerrarPicker() { $("emoji-modal").hidden = true; emojiEditandoIdx = null; }
 
     function seleccionarPill(grupo, valor, attr, clave) {
       estado[clave] = valor;
@@ -450,7 +521,7 @@
       estado.jugadores = [];
       inputs.forEach((inp, i) => {
         const nombre = inp.value.trim() || ("Jugador " + (i + 1));
-        estado.jugadores.push({ nombre: nombre, emoji: EMOJIS[i], puntos: 0 });
+        estado.jugadores.push({ nombre: nombre, emoji: estado.emojisSel[i] || EMOJIS[i], puntos: 0 });
       });
 
       estado.mazo = barajar(PALABRAS.map((_, i) => i));
@@ -710,6 +781,13 @@
     document.querySelectorAll("#sel-rondas .pill").forEach((b) => {
       b.addEventListener("click", () => seleccionarPill("sel-rondas", Number(b.dataset.r), "r", "totalRondas"));
     });
+
+    $("contenedor-nombres").addEventListener("click", (e) => {
+      const btn = e.target.closest(".emoji-pick");
+      if (btn) abrirPicker(Number(btn.dataset.i));
+    });
+    $("emoji-cerrar").addEventListener("click", cerrarPicker);
+    $("emoji-modal").addEventListener("click", (e) => { if (e.target === $("emoji-modal")) cerrarPicker(); });
 
     $("btn-empezar").addEventListener("click", empezarPartida);
     $("btn-reglas").addEventListener("click", () => mostrarPantalla("pantalla-reglas"));
